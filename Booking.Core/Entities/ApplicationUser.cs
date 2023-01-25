@@ -10,6 +10,6 @@ namespace Booking.Core.Entities
 #nullable disable
     public class ApplicationUser : IdentityUser
     {
-        public ICollection<ApplicationUserGymClass> AttendingClasses { get; set; }
+        public ICollection<ApplicationUserGymClass> AttendingClasses { get; set; } = new List<ApplicationUserGymClass>();
     }
 }

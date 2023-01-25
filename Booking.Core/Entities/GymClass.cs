@@ -3,7 +3,7 @@
 //#nullable disable
     public class GymClass
     {
-        int Id { get; set; }
+        public int Id { get; set; }
 
         public string Name { get; set; } = string.Empty;
         DateTime StartTime { get; set; }
@@ -12,7 +12,7 @@
         DateTime EndTime { get => StartTime + Duration; }
         String Description { get; set; } = string.Empty;
 
-        public ICollection<ApplicationUserGymClass> AttendindMembers { get; set; } = new List<ApplicationUserGymClass>();
+        public ICollection<ApplicationUserGymClass> AttendingMembers { get; set; } = new List<ApplicationUserGymClass>();
 
 
     }
