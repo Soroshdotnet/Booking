@@ -2,7 +2,7 @@
 {
     public static class RequestExtensions
     {
-        public static bool IsAjax(this HttpRequest request) 
+        public static bool IsAjax(this HttpRequest request)
         {
             if (request is null)
             {

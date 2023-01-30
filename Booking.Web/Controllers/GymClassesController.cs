@@ -10,6 +10,7 @@ using Booking.Web.Data;
 using Booking.Web.Models;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Booking.Web.Extensions;
 
@@ -29,26 +30,24 @@ namespace Booking.Web.Controllers
         // GET: GymClasses
         public async Task<IActionResult> Index()
         {
-
-            //var model = await _context.GymClasses.IgnoreQueryFilters().ToListAsync();
-
+            // var model = await _context.GymClasses.IgnoreQueryFilters().ToListAsync();
             var model = await _context.GymClasses.ToListAsync();
 
             return View(model);
         }
 
         [Authorize]
-        public async Task<IActionResult> BookingToogle(int? id)
+        public async Task<IActionResult> BookingToggle(int? id)
         {
             if (id is null) return BadRequest();
 
-            // var userID = User.FindDirstVakue(ClaimTypes.NameIdentifier);
+            // var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var userId = userManager.GetUserId(User);
 
             if (userId == null) return NotFound();
 
             //var currentGymClass = await _context.GymClasses.Include(g => g.AttendingMembers)
-            //                                             .FirstOrDefaultAsync(g => g.Id == id);
+            //                                               .FirstOrDefaultAsync(g => g.Id == id);
 
             //var attending = currentGymClass?.AttendingMembers.FirstOrDefault(a => a.ApplicationUserId == userId);
 
@@ -63,16 +62,17 @@ namespace Booking.Web.Controllers
                 };
 
                 _context.AppUserGymClass.Add(booking);
-             }
+            }
             else
             {
                 _context.AppUserGymClass.Remove(attending);
             }
+
             await _context.SaveChangesAsync();
 
             return RedirectToAction("Index");
-        }
 
+        }
 
         // GET: GymClasses/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -109,7 +109,7 @@ namespace Booking.Web.Controllers
             {
                 _context.Add(gymClass);
                 await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return Request.IsAjax() ? PartialView("GymClassesPartial", await _context.GymClasses.ToListAsync()) : RedirectToAction(nameof(Index));
             }
             return View(gymClass);
         }
@@ -197,14 +197,14 @@ namespace Booking.Web.Controllers
             {
                 _context.GymClasses.Remove(gymClass);
             }
-            
+
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
         }
 
         private bool GymClassExists(int id)
         {
-          return (_context.GymClasses?.Any(e => e.Id == id)).GetValueOrDefault();
+            return (_context.GymClasses?.Any(e => e.Id == id)).GetValueOrDefault();
         }
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
