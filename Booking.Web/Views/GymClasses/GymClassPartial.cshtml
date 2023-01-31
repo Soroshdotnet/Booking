@@ -1,4 +1,4 @@
-﻿@model Booking.Core.Entities.GymClass
+﻿@model GymClassesViewModel
 
 
 <tr>
@@ -11,9 +11,7 @@
     <td>
         @Html.DisplayFor(item => item.Duration)
     </td>
-    <td>
-        @Html.DisplayFor(item => item.Description)
-    </td>
+  
     <td>
         <a asp-action="Edit" asp-route-id="@Model.Id">Edit</a> |
         <a asp-action="Details" asp-route-id="@Model.Id">Details</a> |

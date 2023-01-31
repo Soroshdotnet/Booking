@@ -1,11 +1,22 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Booking.Core.Entities;
+using Booking.Data.Data;
 using Booking.Web.Models;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Booking.Web.Extensions;
-using Abp.Domain.Uow;
+using Booking.Web.Filters;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Booking.Core.Repositories;
+using Booking.Core.ViewModels;
 using AutoMapper;
 
 namespace Booking.Web.Controllers
@@ -26,27 +37,16 @@ namespace Booking.Web.Controllers
 
         // GET: GymClasses
         [AllowAnonymous]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(IndexViewModel viewModel)
         {
-            //var gymClasses = await uow.GymClassRepository.GetAsync();
-            //var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses);
+            if (User.Identity != null && !User.Identity.IsAuthenticated)
+                return View(mapper.Map<IndexViewModel>(await uow.GymClassRepository.GetAsync()));
 
-            //var userId = userManager.GetUserId(User);
-            //var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
-            //var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses, opt => opt.Items.Add("UserId", userId)); //var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
+            var gymClasses = viewModel.ShowHistory ?
+                 await uow.GymClassRepository.GetHistoryAsync()
+               : await uow.GymClassRepository.GetWithAttendinAsync();
 
-            var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
-            var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses);
-
-            //var model = (await uow.GymClassRepository.GetWithAttendinAsync())
-            //                    .Select(g => new GymClassesViewModel
-            //                    {
-            //                        Id = g.Id,
-            //                        Name = g.Name,
-            //                        Duration= g.Duration,
-            //                        StartTime= g.StartTime,
-            //                        Attending = g.AttendingMembers.Any(a => a.ApplicationUserId == userId)
-            //                    }).ToList();
+            var res = mapper.Map<IndexViewModel>(gymClasses);
 
             return View(res);
         }
@@ -108,13 +108,14 @@ namespace Booking.Web.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Create([Bind("Id,Name,StartTime,Duration,Description")] GymClass gymClass)
         {
             if (ModelState.IsValid)
             {
                 uow.GymClassRepository.Add(gymClass);
                 await uow.CompleteAsync();
-                return Request.IsAjax() ? PartialView("GymClassPartial", gymClass) : RedirectToAction(nameof(Index));
+                return Request.IsAjax() ? PartialView("GymClassPartial", mapper.Map<GymClassesViewModel>(gymClass)) : RedirectToAction(nameof(Index));
             }
 
             if (Request.IsAjax())

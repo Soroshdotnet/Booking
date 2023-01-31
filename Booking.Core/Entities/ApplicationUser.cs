@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 namespace Booking.Core.Entities
 {
-#nullable disable
     public class ApplicationUser : IdentityUser
     {
         public ICollection<ApplicationUserGymClass> AttendingClasses { get; set; } = new List<ApplicationUserGymClass>();

@@ -3,7 +3,6 @@ using Booking.Core.Repositories;
 using Booking.Data;
 using Booking.Data.Data;
 using Booking.Data.Repositories;
-using Booking.Web.Data;
 using Booking.Web.Extensions;
 using Booking.Web.MiddleWare;
 using Microsoft.AspNetCore.Authorization;
