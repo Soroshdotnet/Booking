@@ -1,4 +1,4 @@
-﻿@model IEnumerable<Booking.Core.Entities.GymClass>
+﻿@model IEnumerable<GymClassesViewModel>
 
 @{
     ViewData["Title"] = "Index";
@@ -6,20 +6,25 @@
 
 <h1>Index</h1>
 
+
 <div id="createajax"></div>
 
-<p>
-    <a asp-action="Create">Create New original</a>
-</p>
-<p>
-    <a asp-action="Create" class="btn btn btn-outline-dark"
-     data-ajax="true"
-     data-ajax-method="GET"
-     data-ajax-update="#createajax"
-     data-ajax-mode="replace"
+@if (User.IsInRole("Admin"))
+{
+    <div>
+        <a asp-action="Create">Create New original</a>
 
-    >Create New Jquery Ajax</a>
-</p>
+        <a asp-action="Create" class="btn btn-dark"
+       data-ajax="true"
+       data-ajax-method="GET"
+       data-ajax-update="#createajax"
+       data-ajax-mode="replace"
+       data-ajax-success="fixValidation">Create New Jquery ajax</a>
+
+        <p id="fetch" class="btn btn-dark">Fetch</p>
+        <p id="fetch2" class="btn btn-dark">Fetch2</p>
+    </div>
+}
 <table class="table">
     <thead>
         <tr>
@@ -31,9 +36,6 @@
             </th>
             <th>
                 @Html.DisplayNameFor(model => model.Duration)
-            </th>
-            <th>
-                @Html.DisplayNameFor(model => model.Description)
             </th>
             <th></th>
         </tr>

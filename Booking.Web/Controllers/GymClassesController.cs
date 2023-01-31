@@ -1,42 +1,58 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc;
 using Booking.Core.Entities;
-using Booking.Web.Data;
 using Booking.Web.Models;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Identity;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Booking.Web.Extensions;
+using Abp.Domain.Uow;
+using AutoMapper;
 
 namespace Booking.Web.Controllers
 {
+    // [Authorize(Policy ="Test")]
     public class GymClassesController : Controller
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IUnitOfWork uow;
         private readonly UserManager<ApplicationUser> userManager;
+        private readonly IMapper mapper;
 
-        public GymClassesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public GymClassesController(IUnitOfWork uow, UserManager<ApplicationUser> userManager, IMapper mapper)
         {
-            _context = context;
+            this.uow = uow;
             this.userManager = userManager;
+            this.mapper = mapper;
         }
 
         // GET: GymClasses
+        [AllowAnonymous]
         public async Task<IActionResult> Index()
         {
-            // var model = await _context.GymClasses.IgnoreQueryFilters().ToListAsync();
-            var model = await _context.GymClasses.ToListAsync();
+            //var gymClasses = await uow.GymClassRepository.GetAsync();
+            //var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses);
 
-            return View(model);
+            //var userId = userManager.GetUserId(User);
+            //var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
+            //var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses, opt => opt.Items.Add("UserId", userId)); //var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
+
+            var gymClasses = await uow.GymClassRepository.GetWithAttendinAsync();
+            var res = mapper.Map<IEnumerable<GymClassesViewModel>>(gymClasses);
+
+            //var model = (await uow.GymClassRepository.GetWithAttendinAsync())
+            //                    .Select(g => new GymClassesViewModel
+            //                    {
+            //                        Id = g.Id,
+            //                        Name = g.Name,
+            //                        Duration= g.Duration,
+            //                        StartTime= g.StartTime,
+            //                        Attending = g.AttendingMembers.Any(a => a.ApplicationUserId == userId)
+            //                    }).ToList();
+
+            return View(res);
         }
 
-        [Authorize]
+
+        //[Authorize]
         public async Task<IActionResult> BookingToggle(int? id)
         {
             if (id is null) return BadRequest();
@@ -45,13 +61,7 @@ namespace Booking.Web.Controllers
             var userId = userManager.GetUserId(User);
 
             if (userId == null) return NotFound();
-
-            //var currentGymClass = await _context.GymClasses.Include(g => g.AttendingMembers)
-            //                                               .FirstOrDefaultAsync(g => g.Id == id);
-
-            //var attending = currentGymClass?.AttendingMembers.FirstOrDefault(a => a.ApplicationUserId == userId);
-
-            var attending = await _context.AppUserGymClass.FindAsync(userId, id);
+            ApplicationUserGymClass? attending = await uow.ApplicationUserGymClassRepository.FindAsync(userId, (int)id);
 
             if (attending == null)
             {
@@ -61,41 +71,36 @@ namespace Booking.Web.Controllers
                     GymClassId = (int)id
                 };
 
-                _context.AppUserGymClass.Add(booking);
+                uow.ApplicationUserGymClassRepository.Add(booking);
             }
             else
             {
-                _context.AppUserGymClass.Remove(attending);
+                uow.ApplicationUserGymClassRepository.Remove(attending);
             }
 
-            await _context.SaveChangesAsync();
+            await uow.CompleteAsync();
 
             return RedirectToAction("Index");
 
         }
 
+
         // GET: GymClasses/Details/5
+        [RequiredParameterRequiredModel("id")]
         public async Task<IActionResult> Details(int? id)
         {
-            if (id == null || _context.GymClasses == null)
-            {
-                return NotFound();
-            }
-
-            var gymClass = await _context.GymClasses
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (gymClass == null)
-            {
-                return NotFound();
-            }
-
-            return View(gymClass);
+            return View(await uow.GymClassRepository.GetAsync((int)id!));
         }
 
         // GET: GymClasses/Create
         public IActionResult Create()
         {
             return Request.IsAjax() ? PartialView("CreatePartial") : View();
+        }
+
+        public IActionResult FetchForm()
+        {
+            return PartialView("CreatePartial");
         }
 
         // POST: GymClasses/Create
@@ -107,105 +112,112 @@ namespace Booking.Web.Controllers
         {
             if (ModelState.IsValid)
             {
-                _context.Add(gymClass);
-                await _context.SaveChangesAsync();
-                return Request.IsAjax() ? PartialView("GymClassesPartial", await _context.GymClasses.ToListAsync()) : RedirectToAction(nameof(Index));
-            }
-            return View(gymClass);
-        }
-
-        // GET: GymClasses/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null || _context.GymClasses == null)
-            {
-                return NotFound();
+                uow.GymClassRepository.Add(gymClass);
+                await uow.CompleteAsync();
+                return Request.IsAjax() ? PartialView("GymClassPartial", gymClass) : RedirectToAction(nameof(Index));
             }
 
-            var gymClass = await _context.GymClasses.FindAsync(id);
-            if (gymClass == null)
+            if (Request.IsAjax())
             {
-                return NotFound();
-            }
-            return View(gymClass);
-        }
-
-        // POST: GymClasses/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Name,StartTime,Duration,Description")] GymClass gymClass)
-        {
-            if (id != gymClass.Id)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(gymClass);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!GymClassExists(gymClass.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(gymClass);
-        }
-
-        // GET: GymClasses/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null || _context.GymClasses == null)
-            {
-                return NotFound();
-            }
-
-            var gymClass = await _context.GymClasses
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (gymClass == null)
-            {
-                return NotFound();
+                Response.StatusCode = StatusCodes.Status400BadRequest;
+                return PartialView("CreatePartial", gymClass);
             }
 
             return View(gymClass);
         }
 
-        // POST: GymClasses/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            if (_context.GymClasses == null)
-            {
-                return Problem("Entity set 'ApplicationDbContext.GymClasses'  is null.");
-            }
-            var gymClass = await _context.GymClasses.FindAsync(id);
-            if (gymClass != null)
-            {
-                _context.GymClasses.Remove(gymClass);
-            }
+        //// GET: GymClasses/Edit/5
+        //public async Task<IActionResult> Edit(int? id)
+        //{
+        //    if (id == null)
+        //    {
+        //        return NotFound();
+        //    }
 
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
+        //    var gymClass = await uow.GymClassRepository.GetAsync((int)id);
+        //    if (gymClass == null)
+        //    {
+        //        return NotFound();
+        //    }
+        //    return View(gymClass);
+        //}
 
-        private bool GymClassExists(int id)
-        {
-            return (_context.GymClasses?.Any(e => e.Id == id)).GetValueOrDefault();
-        }
+        //// POST: GymClasses/Edit/5
+        //// To protect from overposting attacks, enable the specific properties you want to bind to.
+        //// For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Edit(int id, [Bind("Id,Name,StartTime,Duration,Description")] GymClass gymClass)
+        //{
+        //    if (id != gymClass.Id)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    if (ModelState.IsValid)
+        //    {
+        //        try
+        //        {
+        //            _context.Update(gymClass);
+        //            await _context.SaveChangesAsync();
+        //        }
+        //        catch (DbUpdateConcurrencyException)
+        //        {
+        //            if (!GymClassExists(gymClass.Id))
+        //            {
+        //                return NotFound();
+        //            }
+        //            else
+        //            {
+        //                throw;
+        //            }
+        //        }
+        //        return RedirectToAction(nameof(Index));
+        //    }
+        //    return View(gymClass);
+        //}
+
+        //// GET: GymClasses/Delete/5
+        //public async Task<IActionResult> Delete(int? id)
+        //{
+        //    if (id == null || _context.GymClasses == null)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    var gymClass = await _context.GymClasses
+        //        .FirstOrDefaultAsync(m => m.Id == id);
+        //    if (gymClass == null)
+        //    {
+        //        return NotFound();
+        //    }
+
+        //    return View(gymClass);
+        //}
+
+        //// POST: GymClasses/Delete/5
+        //[HttpPost, ActionName("Delete")]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> DeleteConfirmed(int id)
+        //{
+        //    if (_context.GymClasses == null)
+        //    {
+        //        return Problem("Entity set 'ApplicationDbContext.GymClasses'  is null.");
+        //    }
+        //    var gymClass = await _context.GymClasses.FindAsync(id);
+        //    if (gymClass != null)
+        //    {
+        //        _context.GymClasses.Remove(gymClass);
+        //    }
+
+        //    await _context.SaveChangesAsync();
+        //    return RedirectToAction(nameof(Index));
+        //}
+
+        //private bool GymClassExists(int id)
+        //{
+        //  return (_context.GymClasses?.Any(e => e.Id == id)).GetValueOrDefault();
+        //}
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()
