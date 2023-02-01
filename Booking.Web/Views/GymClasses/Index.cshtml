@@ -6,21 +6,24 @@
 
 <h1>Index</h1>
 
+<p>Log in to book or register gym sessions.</p>
 
 <div id="createajax"></div>
 
 @*@if (User.IsInRole("Admin"))
 {*@
         <div>
-            <a asp-action="Create">Create New original</a>
-
-            <a asp-action="Create" class="btn btn-dark"
+            <p>
+            <a asp-action="Create">Create New (Original)</a>
+            </p>
+            <p>
+            <a asp-action="create" class="btn btn btn-outline-dark"
        data-ajax="true"
        data-ajax-method="GET"
        data-ajax-update="#createajax"
        data-ajax-mode="replace"
-       data-ajax-success="fixValidation">Create New Jquery ajax</a>
-
+       data-ajax-success="fixValidation">Create New (Jquery ajax)</a>
+       </p>
             <p id="fetch" class="btn btn-dark">Fetch</p>
             <p id="fetch2" class="btn btn-dark">Fetch2</p>
         </div>
