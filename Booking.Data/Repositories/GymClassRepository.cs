@@ -40,9 +40,13 @@ namespace Booking.Data.Repositories
             db.Add(gymclass);
         }
 
-        public Task<IEnumerable<GymClass>> GetHistoryAsync()
+        public async Task<IEnumerable<GymClass>> GetHistoryAsync()
         {
-            throw new NotImplementedException();
+            return await db.GymClasses
+                        .Include(g => g.AttendingMembers)
+                        .IgnoreQueryFilters()
+                        .Where(g => g.StartTime < DateTime.Now)
+                        .ToListAsync();
         }
     }
 }
